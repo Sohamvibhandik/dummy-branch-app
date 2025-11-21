@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   api:
-    build: .
+    image: ghcr.io/YOUR_GH_USER/branch-loan-api:${IMAGE_TAG}
     container_name: branchloan-api
     env_file:
       - .env
@@ -11,8 +11,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
       - PORT=${PORT}
-    depends_on:
-      - db
+    restart: unless-stopped
     networks:
       - branchnet
 
@@ -27,6 +26,7 @@ services:
       - POSTGRES_DB=${DB_NAME}
     volumes:
       - dbdata:/var/lib/postgresql/data
+    restart: unless-stopped
     networks:
       - branchnet
 

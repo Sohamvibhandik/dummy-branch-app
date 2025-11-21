@@ -1,0 +1,4 @@
+branchloans.com {
+  reverse_proxy api:8000
+  tls internal
+}

@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS loans (
+  id TEXT PRIMARY KEY,
+  applicant_name TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  term INTEGER,
+  status TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

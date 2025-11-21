@@ -1,60 +1,43 @@
-# Flask Microloans API + Postgres (Docker)
+# Branch Loan API
 
-Minimal REST API for microloans, built with Flask, SQLAlchemy, Alembic, and PostgreSQL (via Docker Compose).
+This is a simple, clean submission for the Branch Loan API task.
 
-## Quick start
+## What this repo contains
+- Small REST API for loans
+- Postgres database
+- Docker and docker-compose setup
+- Basic health check and metrics
+- Simple CI workflow to build and push images
 
-```bash
-# 1) Build and start services
-docker compose up -d --build
+## Quick start (developer)
+1. Copy example env
+cp .env.example .env
 
-# 2) Run DB migrations
-docker compose exec api alembic upgrade head
+2. Build and run
+docker compose up --build
 
-# 3) Seed dummy data (idempotent)
-docker compose exec api python scripts/seed.py
+3. Create database table
+docker exec -it branchloan-api node migrations/run_migrations.js
 
-# 4) Hit endpoints
+4. Test
 curl http://localhost:8000/health
 curl http://localhost:8000/api/loans
-```
 
-## Configuration
-
-See `.env.example` for env vars. By default:
-- `DATABASE_URL=postgresql+psycopg2://postgres:postgres@db:5432/microloans`
-- API listens on `localhost:8000`.
-
-## API
-
-- GET `/health` → `{ "status": "ok" }`
-- GET `/api/loans` → list all loans
-- GET `/api/loans/:id` → get loan by id
-- POST `/api/loans` → create loan (status defaults to `pending`)
-
-Example create:
-```bash
-curl -X POST http://localhost:8000/api/loans \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "borrower_id": "usr_india_999",
-    "amount": 12000.50,
-    "currency": "INR",
-    "term_months": 6,
-    "interest_rate_apr": 24.0
-  }'
-```
-
-- GET `/api/stats` → aggregate stats: totals, avg, grouped by status/currency.
-
-## Development
-
-- App entrypoint: `wsgi.py` (`wsgi:app`)
-- Flask app factory: `app/__init__.py`
-- Models: `app/models.py`
-- Migrations: `alembic/`
+## Quick start (recruiter)
+1. Clone repo
+2. Copy example env
+cp .env.example .env
+3. Pull published images and run
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+4. Visit https://branchloans.com/health
+If accessing locally use curl -k or visit http://localhost:8000
 
 ## Notes
+- Do not commit .env
+- If ports 80/443 are in use, stop other services or use a different host
+- To stop the stack
+docker compose down -v
 
-- Amounts are validated server-side (0 < amount ≤ 50000).
-- No authentication for this prototype.
+## Contact
+If anything does not run, reply and I will help quickly.
