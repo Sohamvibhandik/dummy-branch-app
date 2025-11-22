@@ -1,4 +1,4 @@
-version: "3.8"
+﻿version: "3.8"
 services:
   api:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-Sohamvibhandik}/${IMAGE_NAME:-branch-loan-api}:${IMAGE_TAG:-latest}

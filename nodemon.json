@@ -1,0 +1,6 @@
+﻿{
+  "watch": ["index.js","routes","lib","migrations"],
+  "ext": "js,json",
+  "exec": "node index.js",
+  "ignore": ["node_modules/*", "docker-compose*.yml"]
+}

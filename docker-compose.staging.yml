@@ -1,0 +1,31 @@
+﻿version: "3.8"
+services:
+  api:
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=staging
+      - LOG_LEVEL=info
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "0.5"
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${DB_USER:-branch}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-branchpass}
+      - POSTGRES_DB=${DB_NAME:-branchloans}
+    volumes:
+      - dbdata_staging:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+volumes:
+  dbdata_staging:

@@ -1,0 +1,35 @@
+﻿version: "3.8"
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: ["npx","nodemon","--watch","./","--legacy-watch","index.js"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${DB_USER:-branch}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-branchpass}
+      - POSTGRES_DB=${DB_NAME:-branchloans}
+    volumes:
+      - dbdata_dev:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+volumes:
+  dbdata_dev:
