@@ -1,25 +1,26 @@
 version: "3.8"
 services:
   api:
-    image: ghcr.io/Sohamvibhandik/branch-loan-api:latest
-    container_name: branchloan-api
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-Sohamvibhandik}/${IMAGE_NAME:-branch-loan-api}:${IMAGE_TAG:-latest}
     env_file:
       - .env
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - PORT=${PORT}
+      - NODE_ENV=production
+      - LOG_LEVEL=info
     restart: unless-stopped
-    networks:
-      - branchnet
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: "1.0"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   db:
     image: postgres:15
-    container_name: branchloan-db
-    env_file:
-      - .env
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
@@ -27,12 +28,14 @@ services:
     volumes:
       - dbdata:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - branchnet
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
 
   caddy:
     image: caddy:2
-    container_name: branchloan-caddy
     ports:
       - "80:80"
       - "443:443"
@@ -41,12 +44,8 @@ services:
       - caddy_data:/data
     depends_on:
       - api
-    networks:
-      - branchnet
+    restart: unless-stopped
 
 volumes:
   dbdata:
   caddy_data:
-
-networks:
-  branchnet:

@@ -1,0 +1,19 @@
+{
+  \"id\": null,
+  \"title\": \"Branch Loan API - Basic Metrics\",
+  \"panels\": [
+    {
+      \"type\": \"graph\",
+      \"title\": \"HTTP Request Duration (95th Percentile)\",
+      \"targets\": [
+        {
+          \"expr\": \"histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket[5m])) by (le))\",
+          \"refId\": \"A\"
+        }
+      ],
+      \"gridPos\": {\"x\": 0, \"y\": 0, \"w\": 24, \"h\": 9}
+    }
+  ],
+  \"schemaVersion\": 27,
+  \"version\": 1
+}

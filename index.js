@@ -1,68 +1,107 @@
-const express = require('express')
-const bodyParser = require('body-parser')
-const db = require('./db')
-const client = require('prom-client')
-const { v4: uuidv4 } = require('uuid')
+// index.js
+const express = require("express");
+const bodyParser = require("body-parser");
+const { v4: uuidv4 } = require("uuid");
+const pino = require("pino");
+const db = require("./db");
+const client = require("prom-client");
 
-const register = new client.Registry()
-client.collectDefaultMetrics({ register })
+const logger = pino();
 
-const app = express()
-app.use(bodyParser.json())
+const app = express();
+app.use(bodyParser.json());
 
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType)
-  res.end(await register.metrics())
-})
+// request logging middleware
+app.use((req, res, next) => {
+  const id = uuidv4();
+  req.id = id;
+  const start = Date.now();
+  res.on("finish", () => {
+    logger.info({
+      msg: "request_finished",
+      method: req.method,
+      url: req.originalUrl,
+      status: res.statusCode,
+      duration_ms: Date.now() - start,
+      req_id: id
+    });
+  });
+  next();
+});
 
-app.get('/health', async (req, res) => {
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics();
+
+const httpRequestDurationMicroseconds = new client.Histogram({
+  name: "http_request_duration_ms",
+  help: "Duration of HTTP requests in ms",
+  labelNames: ["method", "route", "code"],
+  buckets: [50, 100, 300, 500, 1000, 2000]
+});
+
+app.use((req, res, next) => {
+  const end = httpRequestDurationMicroseconds.startTimer();
+  res.on("finish", () => {
+    end({ method: req.method, route: req.path, code: res.statusCode });
+  });
+  next();
+});
+
+// DB-aware healthcheck
+app.get("/health", async (req, res) => {
   try {
-    await db.query('SELECT 1')
-    res.json({ status: 'ok' })
-  } catch (e) {
-    res.status(500).json({ status: 'error' })
+    await db.query("SELECT 1");
+    return res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    logger.error({ msg: "healthcheck_db_error", error: err.message });
+    return res.status(500).json({ status: "error", db: "down", error: err.message });
   }
-})
+});
 
-app.get('/api/loans', async (req, res) => {
+// metrics endpoint
+app.get("/metrics", async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM loans ORDER BY created_at DESC')
-    res.json(result.rows)
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+    res.set("Content-Type", client.register.contentType);
+    res.send(await client.register.metrics());
+  } catch (err) {
+    logger.error({ msg: "metrics_error", error: err.message });
+    res.status(500).send(err.message);
   }
-})
+});
 
-app.get('/api/loans/:id', async (req, res) => {
+// ---- Loan endpoints (GET + POST) ----
+app.get("/api/loans", async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM loans WHERE id=$1', [req.params.id])
-    if (result.rows.length === 0) return res.status(404).json({ error: 'not found' })
-    res.json(result.rows[0])
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+    const result = await db.query("SELECT id, applicant_name, amount, term, status, created_at FROM loans ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    logger.error({ msg: "get_loans_error", error: err.message });
+    res.status(500).json({ error: "failed to fetch loans" });
   }
-})
+});
 
-app.post('/api/loans', async (req, res) => {
+app.post("/api/loans", async (req, res) => {
   try {
-    const { applicant_name, amount, term } = req.body
-    if (!applicant_name || !amount) return res.status(400).json({ error: 'applicant_name and amount required' })
-    const id = uuidv4()
-    const result = await db.query('INSERT INTO loans(id, applicant_name, amount, term, status, created_at) VALUES($1,$2,$3,$4,$5,NOW()) RETURNING *', [id, applicant_name, amount, term || 12, 'pending'])
-    res.status(201).json(result.rows[0])
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+    const { applicant_name, amount, term } = req.body;
+    if (!applicant_name || !amount) {
+      return res.status(400).json({ error: "applicant_name and amount are required" });
+    }
+    const id = uuidv4();
+    await db.query(
+      "INSERT INTO loans (id, applicant_name, amount, term) VALUES ($1, $2, $3, $4)",
+      [id, applicant_name, amount, term || null]
+    );
+    const row = { id, applicant_name, amount, term: term || null, status: null };
+    res.status(201).json(row);
+  } catch (err) {
+    logger.error({ msg: "create_loan_error", error: err.message });
+    res.status(500).json({ error: "failed to create loan" });
   }
-})
+});
 
-app.get('/api/stats', async (req, res) => {
-  try {
-    const result = await db.query("SELECT COUNT(*) as total, SUM(amount) as total_amount, AVG(amount) as avg_amount FROM loans")
-    res.json(result.rows[0])
-  } catch (e) {
-    res.status(500).json({ error: e.message })
-  }
-})
-
-const port = process.env.PORT || 8000
-app.listen(port)
+// start server
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  logger.info({ msg: "server_started", port: PORT });
+});
+   

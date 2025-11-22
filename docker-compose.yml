@@ -1,52 +1,59 @@
-version: "3.8"
 services:
   api:
     build: .
-    container_name: branchloan-api
-    env_file:
-      - .env
+    image: dummy-branch-app-api:latest
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - PORT=${PORT}
+      - NODE_ENV=production
+    ports:
+      - "8000:8000"
     depends_on:
       - db
-    networks:
-      - branchnet
 
   db:
     image: postgres:15
-    container_name: branchloan-db
-    env_file:
-      - .env
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      POSTGRES_USER: branch
+      POSTGRES_PASSWORD: branchpass
+      POSTGRES_DB: branchloans
     volumes:
       - dbdata:/var/lib/postgresql/data
-    networks:
-      - branchnet
 
   caddy:
     image: caddy:2
-    container_name: branchloan-caddy
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
     depends_on:
       - api
-    networks:
-      - branchnet
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:9.0.0
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 
 volumes:
   dbdata:
   caddy_data:
-
-networks:
-  branchnet:
+  caddy_config:
+  grafana_data:
