@@ -1,6 +1,10 @@
-# docker-compose.override.yml
-# This file exposes the API on localhost:8000 for easy local testing.
+
+@'
 services:
   api:
     ports:
       - "8000:8000"
+'@ | Out-File -Encoding UTF8 docker-compose.override.yml
+
+Get-ChildItem -Path . -Filter docker-compose.override.yml
+Get-Content docker-compose.override.yml -Raw
