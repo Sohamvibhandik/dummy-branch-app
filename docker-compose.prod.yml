@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   api:
-    image: ghcr.io/Sohamvibhandik/branch-loan-api:${IMAGE_TAG}
+    image: ghcr.io/Sohamvibhandik/branch-loan-api:latest
     container_name: branchloan-api
     env_file:
       - .env
